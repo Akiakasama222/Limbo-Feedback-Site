@@ -1,0 +1,13 @@
+{
+  "name": "limbo-feedback",
+  "version": "3.0.0",
+  "description": "Feedback website + admin panel for Limbo, built for Vercel. Feedback goes through a Make webhook into a Google Sheet, which is also the database. No npm dependencies.",
+  "private": true,
+  "scripts": {
+    "dev": "node dev-server.js",
+    "test": "node --test test/memory.test.js test/sheets-direct.test.js test/sheets-make.test.js"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}
