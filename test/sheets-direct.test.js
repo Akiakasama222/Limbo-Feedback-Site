@@ -8,7 +8,7 @@ const mock = createMockGoogle();
 process.env.ADMIN_PASSWORD = 'test-pass-123';
 process.env.PUBLIC_CACHE_SECONDS = '0';
 process.env.SHEET_CACHE_SECONDS = '0';
-process.env.GOOGLE_SHEET_ID = 'SHEET123';
+process.env.GOOGLE_SHEET_ID = '1fFXcyPCwrpLJdJu5PR1z8Nc75ncF_r3ofRBMBWpNrlU';
 delete process.env.VERCEL; delete process.env.MAKE_WEBHOOK_URL;
 const { createServer } = require('../dev-server');
 const { registerTests } = require('./shared');
