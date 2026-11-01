@@ -139,7 +139,8 @@ footer.site {
 
 /* ---------- star ratings ---------- */
 /* Stars: a grey row of 5 stars with a gold row of 5 stars on top, cut to the right width (js/feed.js sets it). */
-.stars { position: relative; display: inline-block; line-height: 1; letter-spacing: 2px; white-space: nowrap; font-size: 18px; }
+.stars { position: relative; display: inline-block; line-height: 1; letter-spacing: 2px; white-space: nowrap; font-size: 18px;
+  width: max-content; align-self: flex-start; }   /* exactly as wide as the 5 stars (inside a card, which is a flex column, it would otherwise stretch to the card's width) */
 .stars-bg { color: #3a4062; }
 .stars-fg { position: absolute; left: 0; top: 0; overflow: hidden; color: var(--gold); }
 
