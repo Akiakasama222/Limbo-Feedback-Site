@@ -21,11 +21,11 @@ A website where the feedback players write inside the game is posted, plus an **
 
 ### 1. The Google Sheet
 1. Create a Google Sheet. Rename the first tab to **`Feedback`**.
-2. Type these headers in **row 1, columns A to J** (exactly):
+2. Type these headers in **row 1, columns A to K** (exactly):
 
-| A | B | C | D | E | F | G | H | I | J |
-|---|---|---|---|---|---|---|---|---|---|
-| id | createdAt | date | anonymous | name | title | content | hidden | edited | updatedAt |
+| A | B | C | D | E | F | G | H | I | J | K |
+|---|---|---|---|---|---|---|---|---|---|---|
+| id | createdAt | date | anonymous | name | title | content | hidden | edited | updatedAt | rating |
 
 3. Copy the **spreadsheet ID** from the sheet's address: `docs.google.com/spreadsheets/d/`**`THIS_PART`**`/edit`. This is `GOOGLE_SHEET_ID`.
 
@@ -42,10 +42,10 @@ A website where the feedback players write inside the game is posted, plus an **
 ### 3. Your Make scenario (adds the rows)
 1. In Make open your scenario with the **Custom webhook** you already created.
 2. Open the webhook module and press **Run once** (it now waits for data). Then send one test feedback (see step 6 below, or run
-   `npm run dev` here and send one from the game). Make learns the fields: `id, createdAt, date, anonymous, name, title, content, hidden, edited, updatedAt`.
+   `npm run dev` here and send one from the game). Make learns the fields: `id, createdAt, date, anonymous, name, title, content, hidden, edited, updatedAt, rating`.
    (Later, if you change fields: webhook > **Redetermine data structure**.)
 3. Add **Google Sheets > Add a Row**: choose your spreadsheet and the `Feedback` tab, then map **each column to the webhook field with the same name**
-   (A id, B createdAt, C date, D anonymous, E name, F title, G content, H hidden, I edited, J updatedAt).
+   (A id, B createdAt, C date, D anonymous, E name, F title, G content, H hidden, I edited, J updatedAt, K rating).
    If the module offers a *Value input option*, choose **Raw**. Leave the empty `updatedAt` empty.
 4. Turn the scenario **ON** (scheduling: *Immediately as data arrives*).
 
@@ -78,6 +78,38 @@ Open `https://YOUR-PROJECT.vercel.app/admin`, log in, send a feedback from the g
 Allow up to a minute: Make runs, the site re-reads the sheet (cached 10 s) and Vercel caches the public page (30 s).
 
 > If `MAKE_WEBHOOK_URL` is empty the site adds rows to the sheet itself (instant, no Make needed).
+
+## Star ratings
+
+Players give 1 to 5 stars in the game's Feedback form. The public page shows a summary like Google Play: the average (for example **4.7**),
+the stars, the number of ratings and one bar per star level (5 to 1). Each written feedback card also shows its own stars.
+
+* **Stars alone are enough.** A player can send only the stars (title and message empty). That counts in the summary but is **not shown as a card**.
+  A written comment needs both a title and a message. In your sheet a stars-only entry is a row with a `rating` and empty `title` / `content`.
+* **Hidden entries do not count.** Hiding a feedback (or `REQUIRE_APPROVAL` before you show it) also removes its stars from the average. Deleting removes them for good.
+  Use this to clean up fake or abusive ratings in `/admin`.
+* **Rating-bombing:** anybody can send ratings, limited to 5 per visitor per 10 minutes (best effort, see "Spam protection" below).
+  `REQUIRE_APPROVAL=1` makes every rating wait for your OK.
+* **Older entries** (sent before ratings existed) simply have no stars and are not counted.
+
+**If you already set up the sheet before ratings were added:** type `rating` in cell **K1**, open your Make scenario, press **Run once** on the webhook
+and send one test rating (or use *Redetermine data structure*), then map the new **rating** field to column **K** in the *Add a Row* module.
+(If `MAKE_WEBHOOK_URL` is empty you only need the K1 header: the site writes column K itself.) The admin Setup check reminds you if K1 is missing.
+
+## Something does not work? Use the setup check
+
+Open `/admin` and log in. If the site cannot reach your sheet, a red **Setup check** box lists every setting with a green tick or a red cross and
+says what to fix. (Visitors and the game only ever see a calm "Feedback cannot be saved right now" message.)
+
+| The check says | Usually means |
+|----------------|---------------|
+| `GOOGLE_SHEET_ID` or `GOOGLE_SERVICE_ACCOUNT_JSON` **Missing** | the variable was not added, the name has a typo, it is only enabled for *Preview* / *Development* instead of **Production**, or you did not **redeploy** after adding it |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` **not valid JSON** | it was not pasted completely: paste the *whole* `.json` file, from `{` to `}` |
+| Google Sheet access **HTTP 403 / 404** | the sheet is not shared with the service account email (shown in the check) as **Editor**, or `GOOGLE_SHEET_ID` is wrong |
+| Google Sheet access **HTTP 400** | the tab is not named exactly `Feedback` |
+| Sheet header row **must be exactly** ... | row 1 of the `Feedback` tab does not match the 10 column names |
+
+Click **Check again** after fixing. More detail is in Vercel > your project > **Logs** (lines starting with `[feedback]`).
 
 ## Good to know
 
@@ -121,10 +153,11 @@ put the variables from `.env.example` into a file called `.env.local` (git ignor
 One JSON object per feedback, with exactly the sheet's columns:
 
     { "id": "f1a2b3c4d5e6", "createdAt": 1761825000000, "date": "2026-10-30T12:30:00.000Z", "anonymous": false,
-      "name": "Alex", "title": "Great game", "content": "I love the Swirl sword!", "hidden": false, "edited": false, "updatedAt": "" }
+      "name": "Alex", "title": "Great game", "content": "I love the Swirl sword!", "hidden": false, "edited": false, "updatedAt": "",
+      "rating": 5 }
 
 `createdAt` is milliseconds since 1970 (the site uses it for sorting); `date` is the same moment in readable form for you.
-`hidden` is `true` when `REQUIRE_APPROVAL=1`.
+`hidden` is `true` when `REQUIRE_APPROVAL=1`. `rating` is 1 to 5 (or empty). A stars-only rating arrives with empty `title` and `content`.
 
 ## API (for reference)
 

@@ -6,7 +6,7 @@
 const http = require('node:http');
 const crypto = require('node:crypto');
 
-const HEADERS = ['id', 'createdAt', 'date', 'anonymous', 'name', 'title', 'content', 'hidden', 'edited', 'updatedAt'];
+const HEADERS = ['id', 'createdAt', 'date', 'anonymous', 'name', 'title', 'content', 'hidden', 'edited', 'updatedAt', 'rating'];
 
 function createMockGoogle({ sheetId = 'SHEET123', tab = 'Feedback', makeDelayMs = 0 } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -79,11 +79,13 @@ function createMockGoogle({ sheetId = 'SHEET123', tab = 'Feedback', makeDelayMs 
         const a1 = m[2];
         if (req.method === 'GET') {
           if (url.searchParams.get('valueRenderOption') !== 'UNFORMATTED_VALUE') return send(400, { error: { message: 'expected UNFORMATTED_VALUE' } });
-          return send(200, { range: a1, majorDimension: 'ROWS', values: state.rows.slice(1).map(trim) });
+          const r = a1.match(/^A(\d+):[A-Z](\d*)$/);                           // honour the row numbers in the range (A2:J = from row 2, A1:J1 = header only)
+          const from = Number(r[1]) - 1, to = r[2] ? Number(r[2]) : undefined;
+          return send(200, { range: a1, majorDimension: 'ROWS', values: state.rows.slice(from, to).map(trim) });
         }
         if (req.method === 'PUT') {
           state.valueInputOptions.push(valueInputOption);
-          const row = Number(a1.match(/^A(\d+):J\d+$/)[1]);
+          const row = Number(a1.match(/^A(\d+):K\d+$/)[1]);
           if (row < 2 || row > state.rows.length) return send(400, { error: { message: 'row out of range' } });
           state.rows[row - 1] = JSON.parse(raw).values[0].map(cell);
           return send(200, { updatedRows: 1 });

@@ -22,6 +22,16 @@
 </header>
 
 <main>
+  <!-- Star ratings summary (average, number of ratings and the 5-to-1 star bars) - filled in by js/feed.js -->
+  <section class="rating-box" id="ratingBox" aria-label="Player ratings" hidden>
+    <div class="rating-score">
+      <div class="rating-big" id="ratingBig">0.0</div>
+      <span class="stars" id="ratingStars" role="img"><span class="stars-bg">★★★★★</span><span class="stars-fg">★★★★★</span></span>
+      <div class="rating-count" id="ratingCount"></div>
+    </div>
+    <ul class="rating-bars" id="ratingBars"></ul>
+  </section>
+
   <!-- Shows "Loading…", errors or "No feedback yet" -->
   <p class="status" id="status" role="status">Loading feedback…</p>
   <!-- The feedback cards are added here by js/feed.js -->

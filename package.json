@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "node dev-server.js",
-    "test": "node --test test/memory.test.js test/sheets-direct.test.js test/sheets-make.test.js"
+    "test": "node --test test/memory.test.js test/sheets-direct.test.js test/sheets-make.test.js test/unconfigured.test.js"
   },
   "engines": {
     "node": "22.x"

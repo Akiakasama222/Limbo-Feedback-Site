@@ -43,7 +43,7 @@ function registerTests(getBase) {
     const cases = [
       [good({ title: 'ab' }), /at least 3/], [good({ content: 'short' }), /at least 10/], [good({ content: 'x'.repeat(1501) }), /at most 1500/],
       [good({ title: 'x'.repeat(81) }), /at most 80/], [good({ anonymous: false, name: '   ' }), /Name/], [good({ anonymous: false, name: 'n'.repeat(31) }), /at most 30/],
-      [{ anonymous: true }, /Title/], [good({ title: 5 }), /Title/]
+      [{ anonymous: true }, /title/i], [good({ title: 5 }), /Title/]
     ];
     for (const [body, pattern] of cases) {
       const res = await post(body);
@@ -155,6 +155,81 @@ function registerTests(getBase) {
     assert.equal(ids.size, p1.items.length + p2.items.length, 'no duplicates between pages');
     const far = await (await call('GET', '/api/feedback?page=999')).json();
     assert.equal(far.page, far.pages);
+  });
+
+  const stats = async () => (await (await call('GET', '/api/feedback')).json()).stats;
+
+  test('rating: validation (whole number 1-5; an empty message needs a rating)', async () => {
+    for (const bad of [0, 6, 3.5, -1, '5', 'five', true]) {
+      const res = await post(good({ rating: bad }));
+      assert.equal(res.status, 400, 'rating ' + JSON.stringify(bad));
+      assert.match((await res.json()).error, /1 to 5 stars/);
+    }
+    const none = await post({ anonymous: true });                                       // no text, no rating
+    assert.equal(none.status, 400);
+    assert.match((await none.json()).error, /title and a message, or choose a star rating/);
+    assert.equal((await post({ anonymous: true, title: '   ', content: ' ', rating: 4 })).status, 201);   // blanks count as "no comment"
+    const half = await post({ anonymous: true, title: 'Only a title', rating: 4 });      // a comment needs title AND message
+    assert.equal(half.status, 400);
+    assert.match((await half.json()).error, /Feedback is required|at least 10/);
+  });
+
+  test('rating: stars on a comment show on the card and count in the statistics', async () => {
+    const before = await stats();
+    const res = await post(good({ title: 'Five stars from me', rating: 5 }));
+    assert.equal(res.status, 201);
+    const list = await (await call('GET', '/api/feedback')).json();
+    assert.equal(list.items.find(i => i.title === 'Five stars from me').rating, 5);
+    assert.equal(list.stats.count, before.count + 1);
+    assert.equal(list.stats.counts[5], before.counts[5] + 1);
+  });
+
+  test('rating: a stars-only entry counts in the statistics but is not listed as a card', async () => {
+    const before = await stats();
+    const listBefore = await (await call('GET', '/api/feedback')).json();
+    assert.equal((await post({ anonymous: true, rating: 2 })).status, 201);
+    const after = await (await call('GET', '/api/feedback')).json();
+    assert.equal(after.stats.count, before.count + 1);
+    assert.equal(after.stats.counts[2], before.counts[2] + 1);
+    assert.equal(after.total, listBefore.total, 'no new card');
+    // the admin does see it
+    const cookie = await login();
+    const all = await (await admin('GET', '/api/admin/feedback', cookie)).json();
+    const entry = all.items.find(i => i.rating === 2 && i.title === '' && i.content === '');
+    assert.ok(entry, 'rating-only entry visible to the admin');
+    assert.equal(entry.anonymous, true);
+  });
+
+  test('rating: average and distribution are consistent; hidden or deleted ratings are left out', async () => {
+    const cookie = await login();
+    const s0 = await stats();
+    const ip = newIp();
+    await post({ anonymous: true, rating: 1 }, ip);
+    await post({ anonymous: true, rating: 4 }, ip);
+    const s1 = await stats();
+    assert.equal(s1.count, s0.count + 2);
+    const sum = [1, 2, 3, 4, 5].reduce((t, n) => t + n * s1.counts[n], 0);
+    assert.equal(s1.average, Math.round(sum / s1.count * 100) / 100);
+    assert.equal(Object.values(s1.counts).reduce((a, b) => a + b, 0), s1.count);
+    // hide one of them -> not counted; show again -> counted; delete -> gone
+    const all = await (await admin('GET', '/api/admin/feedback', cookie)).json();
+    const target = all.items.find(i => i.rating === 1 && !i.title);
+    await admin('PATCH', '/api/admin/feedback/' + target.id, cookie, { hidden: true });
+    assert.equal((await stats()).counts[1], s1.counts[1] - 1);
+    await admin('PATCH', '/api/admin/feedback/' + target.id, cookie, { hidden: false });
+    assert.equal((await stats()).counts[1], s1.counts[1]);
+    await admin('DELETE', '/api/admin/feedback/' + target.id, cookie);
+    assert.equal((await stats()).counts[1], s1.counts[1] - 1);
+  });
+
+  test('rating: the admin can edit around a stars-only entry but cannot give it half a comment', async () => {
+    const cookie = await login();
+    await post({ anonymous: true, rating: 3 });
+    const all = await (await admin('GET', '/api/admin/feedback', cookie)).json();
+    const entry = all.items.find(i => i.rating === 3 && !i.title);
+    assert.equal((await admin('PATCH', '/api/admin/feedback/' + entry.id, cookie, { name: 'Zed' })).status, 200);
+    assert.equal((await admin('PATCH', '/api/admin/feedback/' + entry.id, cookie, { title: '', content: '' })).status, 200);
+    assert.equal((await admin('PATCH', '/api/admin/feedback/' + entry.id, cookie, { title: 'Only a title' })).status, 400);
   });
 
   test('site info', async () => {

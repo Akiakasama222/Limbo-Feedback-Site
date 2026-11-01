@@ -41,6 +41,14 @@
     </select>
   </div>
 
+  <!-- Setup check: shown when the feedback list cannot be loaded (missing settings, sheet not shared...) -->
+  <section class="setup" id="setup" hidden>
+    <h2>Setup check</h2>
+    <p id="setupIntro"></p>
+    <ul id="setupList"></ul>
+    <button class="btn small" id="retryBtn" type="button">Check again</button>
+  </section>
+
   <p class="status" id="status" role="status"></p>
   <!-- Feedback cards with Edit / Hide / Delete buttons are added here by js/admin.js -->
   <section class="admin-list" id="list"></section>

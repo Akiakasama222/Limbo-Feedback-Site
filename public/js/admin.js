@@ -17,7 +17,11 @@ async function api(method, url, body) {
   let data = {};
   try { data = await res.json(); } catch (e) { /* no body */ }
   if (res.status === 401 && url !== '/api/admin/login') { showLogin(); throw new Error('Please log in again.'); }
-  if (!res.ok) throw new Error(data.error || 'Request failed (' + res.status + ')');
+  if (!res.ok) {
+    const err = new Error(data.error || 'Request failed (' + res.status + ')');
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
 
@@ -39,13 +43,14 @@ async function login() {
   $('loginBtn').disabled = true;
   try {
     await api('POST', '/api/admin/login', { password: $('password').value });
-    await loadAll();
-    showPanel();
   } catch (e) {
     $('loginMsg').textContent = e.message;
+    return;
   } finally {
     $('loginBtn').disabled = false;
   }
+  showPanel();
+  await loadOrExplain();
 }
 
 async function logout() {
@@ -61,6 +66,48 @@ async function loadAll() {
   render();
 }
 
+// Loads the feedback; if that fails (e.g. the Google Sheet is not set up yet) shows the setup check instead of an empty page.
+async function loadOrExplain() {
+  $('setup').hidden = true;
+  try {
+    await loadAll();
+  } catch (e) {
+    if (e.status === 401) return;                       // api() already showed the login box
+    items = [];
+    counts = { total: 0, published: 0, hidden: 0 };
+    render();
+    $('status').textContent = '';                       // ("No feedback yet" would be misleading here)
+    await showSetupCheck(e.message);
+  }
+}
+
+// Fills the "Setup check" box with one line per check (green tick = fine, red cross = fix this).
+async function showSetupCheck(problem) {
+  $('setup').hidden = false;
+  $('setupIntro').textContent = 'The feedback could not be loaded: ' + problem + ' Here is what is wrong:';
+  const list = $('setupList');
+  list.replaceChildren();
+  let checks = [];
+  try {
+    checks = (await api('GET', '/api/admin/status')).checks;
+  } catch (e) {
+    checks = [{ name: 'Setup check', ok: false, message: e.message }];
+  }
+  for (const check of checks) {
+    const li = document.createElement('li');
+    li.className = check.ok ? 'ok' : 'bad';
+    const mark = document.createElement('span');
+    mark.className = 'mark';
+    mark.textContent = check.ok ? '✔' : '✖';
+    const body = document.createElement('div');
+    const name = document.createElement('b');
+    name.textContent = check.name;
+    body.append(name, document.createTextNode(check.message));
+    li.append(mark, body);
+    list.append(li);
+  }
+}
+
 // ---------- drawing the list ----------
 function matchesFilter(item) {
   const f = $('filter').value;
@@ -68,7 +115,7 @@ function matchesFilter(item) {
   if (f === 'hidden' && !item.hidden) return false;
   const q = $('search').value.trim().toLowerCase();
   if (!q) return true;
-  return (item.title + ' ' + item.content + ' ' + (item.anonymous ? 'anonymous' : item.name)).toLowerCase().includes(q);
+  return (item.title + ' ' + item.content + ' ' + (item.anonymous ? 'anonymous' : item.name) + (item.rating ? ' ' + item.rating + ' stars' : '')).toLowerCase().includes(q);
 }
 
 function render() {
@@ -94,14 +141,22 @@ function makeCard(item) {
   const card = document.createElement('article');
   card.className = 'card' + (item.hidden ? ' is-hidden' : '');
 
+  const ratingOnly = !item.title && !item.content;           // stars without a written comment
   const title = document.createElement('h2');
   title.textContent = item.title;
   const text = document.createElement('p');
-  text.className = 'text';
-  text.textContent = item.content;
+  text.className = 'text' + (ratingOnly ? ' muted' : '');
+  text.textContent = ratingOnly ? 'Rating only - no written comment.' : item.content;
 
   const meta = document.createElement('div');
   meta.className = 'meta';
+  if (item.rating) {
+    const rate = document.createElement('span');
+    rate.className = 'rate';
+    rate.textContent = '★'.repeat(item.rating) + '☆'.repeat(5 - item.rating);
+    rate.title = item.rating + ' of 5 stars';
+    meta.append(rate);
+  }
   const who = document.createElement('span');
   who.className = 'who';
   who.textContent = item.anonymous ? 'Anonymous' : item.name;
@@ -127,7 +182,8 @@ function makeCard(item) {
     button('Delete', 'danger', () => remove(item))
   );
 
-  card.append(title, text, meta, actions);
+  if (ratingOnly) card.append(text, meta, actions);
+  else card.append(title, text, meta, actions);
   return card;
 }
 
@@ -156,6 +212,9 @@ function makeEditor(item) {
   content.maxLength = LIMITS.content;
   content.value = item.content;
 
+  if (!item.title && !item.content) {                        // a stars-only entry has no comment to edit
+    title.placeholder = content.placeholder = '(none - rating only)';
+  }
   field('Name', name);
   field('Title', title);
   field('Feedback', content);
@@ -193,7 +252,7 @@ async function update(item, changes, rethrow) {
 }
 
 async function remove(item) {
-  if (!confirm('Delete this feedback permanently?\n\n"' + item.title + '"')) return;
+  if (!confirm('Delete this feedback permanently?\n\n"' + (item.title || 'Rating only') + '"')) return;
   try {
     const data = await api('DELETE', '/api/admin/feedback/' + item.id);
     items = items.filter(x => x.id !== item.id);
@@ -221,15 +280,17 @@ $('loginBtn').addEventListener('click', login);
 $('password').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 $('logoutBtn').addEventListener('click', logout);
 $('backupBtn').addEventListener('click', downloadBackup);
+$('retryBtn').addEventListener('click', loadOrExplain);
 $('search').addEventListener('input', render);
 $('filter').addEventListener('change', render);
 
 // Already logged in (cookie still valid)? Go straight to the panel.
 (async () => {
   try {
-    await loadAll();
-    showPanel();
+    await api('GET', '/api/admin/me');
   } catch (e) {
-    showLogin();
+    if (e.status === 401) return showLogin();
   }
+  showPanel();
+  await loadOrExplain();
 })();

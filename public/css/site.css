@@ -137,7 +137,45 @@ footer.site {
   padding: 0 16px 30px;
 }
 
+/* ---------- star ratings ---------- */
+/* Stars: a grey row of 5 stars with a gold row of 5 stars on top, cut to the right width (js/feed.js sets it). */
+.stars { position: relative; display: inline-block; line-height: 1; letter-spacing: 2px; white-space: nowrap; font-size: 18px; }
+.stars-bg { color: #3a4062; }
+.stars-fg { position: absolute; left: 0; top: 0; overflow: hidden; color: var(--gold); }
+
+.rating-box {
+  display: flex;
+  gap: 28px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  max-width: 640px;
+  margin: 0 auto 28px;
+  padding: 20px 26px;
+  background: linear-gradient(180deg, var(--panel2), var(--panel));
+  border: 2px solid #fff2;
+  border-radius: 18px;
+  box-shadow: 0 6px 0 #0005;
+}
+.rating-score { text-align: center; min-width: 120px; }
+.rating-big { font-family: "Lilita One", "Trebuchet MS", Arial, sans-serif; font-size: 64px; line-height: 1; color: #fff; }
+.rating-score .stars { font-size: 20px; margin: 6px 0 4px; }
+.rating-count { font-size: 14px; color: var(--muted); }
+.rating-bars { flex: 1 1 260px; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.rating-bars li { display: grid; grid-template-columns: 1.2em 1fr; gap: 10px; align-items: center; font-size: 14px; color: var(--muted); }
+.rating-bars .bar { height: 10px; border-radius: 999px; background: #0007; overflow: hidden; }
+.rating-bars .bar i { display: block; height: 100%; border-radius: 999px; background: var(--lime); }
+.card .stars { font-size: 17px; }
+
 /* ---------- admin panel ---------- */
+.setup { background: #2a1d24; border: 2px solid var(--red); border-radius: 14px; padding: 16px 18px; margin-bottom: 18px; }
+.setup h2 { margin: 0 0 6px; font-size: 24px; color: var(--red); }
+.setup ul { list-style: none; margin: 10px 0 14px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.setup li { display: grid; grid-template-columns: 1.6em 1fr; gap: 4px; overflow-wrap: anywhere; }
+.setup li.ok .mark { color: var(--lime); }
+.setup li.bad .mark { color: var(--red); }
+.setup li b { display: block; }
+
 .admin-wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 60px; }
 .admin-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
 .brand { font-size: 30px; color: var(--gold); text-shadow: 0 3px 0 #0009; }
@@ -179,3 +217,7 @@ textarea { min-height: 140px; resize: vertical; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .edit-form .actions { margin-top: 12px; }
 .counter { text-align: right; font-size: 13px; color: var(--muted); }
+
+/* rating shown in the admin list */
+.rate { color: var(--gold); letter-spacing: 1px; }
+.card .text.muted { color: var(--muted); font-style: italic; }

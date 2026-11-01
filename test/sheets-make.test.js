@@ -33,7 +33,7 @@ const post = (body, ip) => fetch(base + '/api/feedback', { method: 'POST', heade
 
 test('make: the webhook receives one JSON object whose fields match the sheet columns', async () => {
   const p = mock.state.makePayloads[0];
-  assert.deepEqual(Object.keys(p), ['id', 'createdAt', 'date', 'anonymous', 'name', 'title', 'content', 'hidden', 'edited', 'updatedAt']);
+  assert.deepEqual(Object.keys(p), ['id', 'createdAt', 'date', 'anonymous', 'name', 'title', 'content', 'hidden', 'edited', 'updatedAt', 'rating']);
   assert.match(p.id, /^f[a-f0-9]{11}$/);
   assert.equal(typeof p.createdAt, 'number');
   assert.equal(typeof p.anonymous, 'boolean');
